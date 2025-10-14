@@ -37,14 +37,10 @@ const validateDevice = async (req, res, next) => {
 // GET /api/advertisements - Buscar todos os anúncios do usuário (protegido)
 router.get('/', verifyToken, async (req, res) => {
   try {
-    const { deviceId, lastSync } = req.query;
+    const { lastSync } = req.query;
     const userId = req.user.userId; // Pega do token JWT
 
-    if (!deviceId) {
-      return res.status(400).json({ 
-        error: 'deviceId é obrigatório' 
-      });
-    }
+    console.log(`📡 Buscando anúncios para usuário: ${userId}`);
 
     let query = { userId, isDeleted: false };
     
@@ -74,9 +70,12 @@ router.get('/', verifyToken, async (req, res) => {
 });
 
 // POST /api/advertisements - Criar novo anúncio
-router.post('/', validateDevice, async (req, res) => {
+router.post('/', verifyToken, async (req, res) => {
   try {
-    const { id, title, description, price, category, contact, images } = req.body;
+    const { id, title, description, price, category, contact, images, deviceId } = req.body;
+    const userId = req.user.userId; // Pega do token JWT
+
+    console.log(`📝 Criando anúncio para usuário: ${userId}`);
 
     // Validações básicas
     if (!title || !description || !price || !category || !contact) {
@@ -86,7 +85,7 @@ router.post('/', validateDevice, async (req, res) => {
     }
 
     // Verificar se já existe
-    const existing = await Advertisement.findOne({ id, userId: req.userId });
+    const existing = await Advertisement.findOne({ id, userId });
     if (existing) {
       return res.status(409).json({ 
         error: 'Anúncio já existe' 
@@ -101,8 +100,8 @@ router.post('/', validateDevice, async (req, res) => {
       category,
       contact,
       images: images || [],
-      userId: req.userId,
-      deviceId: req.deviceId
+      userId: userId,
+      deviceId: deviceId || 'unknown'
     });
 
     await advertisement.save();
@@ -122,13 +121,16 @@ router.post('/', validateDevice, async (req, res) => {
 });
 
 // PUT /api/advertisements/:id - Atualizar anúncio
-router.put('/:id', validateDevice, async (req, res) => {
+router.put('/:id', verifyToken, async (req, res) => {
   try {
     const { id } = req.params;
     const { title, description, price, category, contact, images } = req.body;
+    const userId = req.user.userId; // Pega do token JWT
+
+    console.log(`✏️ Atualizando anúncio ${id} para usuário: ${userId}`);
 
     const advertisement = await Advertisement.findOneAndUpdate(
-      { id, userId: req.userId, isDeleted: false },
+      { id, userId, isDeleted: false },
       {
         title,
         description,
@@ -157,12 +159,15 @@ router.put('/:id', validateDevice, async (req, res) => {
 });
 
 // DELETE /api/advertisements/:id - Deletar anúncio (soft delete)
-router.delete('/:id', validateDevice, async (req, res) => {
+router.delete('/:id', verifyToken, async (req, res) => {
   try {
     const { id } = req.params;
+    const userId = req.user.userId; // Pega do token JWT
+
+    console.log(`🗑️ Deletando anúncio ${id} para usuário: ${userId}`);
 
     const advertisement = await Advertisement.findOneAndUpdate(
-      { id, userId: req.userId },
+      { id, userId },
       { 
         isDeleted: true,
         updatedAt: new Date()
@@ -186,9 +191,12 @@ router.delete('/:id', validateDevice, async (req, res) => {
 });
 
 // POST /api/advertisements/sync - Sincronização em lote
-router.post('/sync', validateDevice, async (req, res) => {
+router.post('/sync', verifyToken, async (req, res) => {
   try {
-    const { advertisements, lastSync } = req.body;
+    const { advertisements, lastSync, deviceId } = req.body;
+    const userId = req.user.userId; // Pega do token JWT
+
+    console.log(`🔄 Sincronizando ${advertisements?.length || 0} anúncios para usuário: ${userId}`);
 
     if (!Array.isArray(advertisements)) {
       return res.status(400).json({ error: 'advertisements deve ser um array' });
@@ -205,7 +213,7 @@ router.post('/sync', validateDevice, async (req, res) => {
       try {
         const existing = await Advertisement.findOne({ 
           id: adData.id, 
-          userId: req.userId 
+          userId: userId 
         });
 
         if (existing) {
@@ -215,11 +223,11 @@ router.post('/sync', validateDevice, async (req, res) => {
           
           if (localDate > serverDate) {
             await Advertisement.findOneAndUpdate(
-              { id: adData.id, userId: req.userId },
+              { id: adData.id, userId: userId },
               {
                 ...adData,
-                userId: req.userId,
-                deviceId: req.deviceId,
+                userId: userId,
+                deviceId: deviceId || 'unknown',
                 updatedAt: new Date()
               }
             );
@@ -229,8 +237,8 @@ router.post('/sync', validateDevice, async (req, res) => {
           // Criar novo
           const advertisement = new Advertisement({
             ...adData,
-            userId: req.userId,
-            deviceId: req.deviceId
+            userId: userId,
+            deviceId: deviceId || 'unknown'
           });
           await advertisement.save();
           results.created++;
@@ -248,7 +256,7 @@ router.post('/sync', validateDevice, async (req, res) => {
     if (lastSync) {
       serverChanges = await Advertisement
         .find({
-          userId: req.userId,
+          userId: userId,
           updatedAt: { $gt: new Date(lastSync) }
         })
         .sort({ updatedAt: -1 });
