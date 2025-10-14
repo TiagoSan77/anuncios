@@ -1,6 +1,7 @@
 const express = require('express');
 const Advertisement = require('../models/Advertisement');
 const Device = require('../models/Device');
+const { verifyToken } = require('./auth');
 const router = express.Router();
 
 // Middleware para validar deviceId
@@ -33,14 +34,15 @@ const validateDevice = async (req, res, next) => {
   }
 };
 
-// GET /api/advertisements - Buscar todos os anúncios do usuário
-router.get('/', async (req, res) => {
+// GET /api/advertisements - Buscar todos os anúncios do usuário (protegido)
+router.get('/', verifyToken, async (req, res) => {
   try {
-    const { userId, deviceId, lastSync } = req.query;
+    const { deviceId, lastSync } = req.query;
+    const userId = req.user.userId; // Pega do token JWT
 
-    if (!userId || !deviceId) {
+    if (!deviceId) {
       return res.status(400).json({ 
-        error: 'userId e deviceId são obrigatórios' 
+        error: 'deviceId é obrigatório' 
       });
     }
 

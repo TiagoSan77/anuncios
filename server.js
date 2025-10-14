@@ -56,6 +56,8 @@ app.use((req, res, next) => {
 });
 
 // Rotas
+const { router: authRouter } = require('./routes/auth');
+app.use('/api/auth', authRouter);
 app.use('/api/advertisements', require('./routes/advertisements'));
 
 // Rota de health check
