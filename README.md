@@ -10,7 +10,7 @@ Backend Node.js + Express + MongoDB para sincronização na nuvem do app de anú
 ### Configuração no Render:
 - **Build Command:** `npm install`  
 - **Start Command:** `npm start`  
-
+- **Environment Variables:**
 ## 📋 Funcionalidades
 
 ### 🔐 API REST Completa
@@ -37,12 +37,6 @@ Backend Node.js + Express + MongoDB para sincronização na nuvem do app de anú
 ## 🚀 Como Executar
 
 ### 1. Configurar Variáveis
-```bash
-# Edite o arquivo .env com suas configurações
-MONGODB_URI=mongodb+srv://Tiago:ExCHBgBX5wLZUWUS@cluster0.51trz.mongodb.net/anuncios-app?retryWrites=true&w=majority
-PORT=3000
-JWT_SECRET=seu_jwt_secret_muito_seguro_aqui_2024
-NODE_ENV=development
 ```
 
 ### 2. Instalar e Executar
